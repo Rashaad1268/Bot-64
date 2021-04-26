@@ -1,0 +1,7 @@
+run.py
+.vscode
+*.env
+__pycache__/
+bot/constants.py
+server_rules.txt
+test_code.py
