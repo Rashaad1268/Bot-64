@@ -8,6 +8,7 @@ from discord.ext import tasks
 from bot.main import Bot
 from bot.utils.checks import is_staff, in_valid_channels
 from bot.constants import Colours, RedditAPI
+from bot.utils.helpful import build_error_embed
 from bot.utils.converters import Subreddit
 
 log = logging.getLogger(__name__)
@@ -32,12 +33,17 @@ class RedditCog(commands.Cog, name="Reddit"):
             subreddit = await reddit.subreddit(random_subreddit)
 
             if self.submissions == []:
-                embed = discord.Embed(
-                    description="Meme cache is empty\nRefreshing it... (This may take some time)",
-                    colour=Colours.red,
+                await ctx.send(
+                    embed=build_error_embed(
+                        "Meme cache is empty\nRefreshing it... (This may take some time)\n"
+                        "Please use this command after about 15 seconds",
+                        title="No memes...For now"
+                    ),
                 )
-                await ctx.send(embed=embed)
                 await self.refresh_submissions(ctx, 40)
+                await ctx.send
+                return
+
             post = random.choice(self.submissions)
 
             embed = discord.Embed(
@@ -50,13 +56,11 @@ class RedditCog(commands.Cog, name="Reddit"):
 
         await ctx.message.reply(embed=embed, mention_author=False)
 
-
     @command(name="meme", aliases=["m"])
     @is_staff()
     async def _meme(self, ctx):
         """Sends a random meme from reddit"""
         await self.send_meme(ctx)
-
 
     @commands.group(name="reddit", invoke_without_command=True)
     @is_owner()
@@ -68,8 +72,10 @@ class RedditCog(commands.Cog, name="Reddit"):
     async def refresh_submissions(self, ctx, submission_count: int = 20):
         embed = discord.Embed(colour=Colours.orange)
         log.info("Updating reddit submissions")
-        if len(self.submissions) >= 130:
-            log.info(f"Cleared meme cache because it has more than 130 items ({len(self.submissions)}) items")
+        if len(self.submissions) >= 170:
+            log.info(
+                f"Cleared meme cache because it has more than 130 items ({len(self.submissions)})"
+            )
             self.submissions = []
 
         reddit = asyncpraw.Reddit(
@@ -80,7 +86,9 @@ class RedditCog(commands.Cog, name="Reddit"):
         reddit.read_only = True
 
         random_subreddit = random.choice(SUBBREDDIT_OPTIONS)
-        embed.description = f"Refreshing reddit submissions\nSubreddit: {random_subreddit}"
+        embed.description = (
+            f"Refreshing reddit submissions\nSubreddit: {random_subreddit}"
+        )
         await ctx.send(embed=embed)
         subreddit = await reddit.subreddit(random_subreddit)
 
@@ -99,10 +107,9 @@ class RedditCog(commands.Cog, name="Reddit"):
 
         embed = discord.Embed(
             description=f"Added {subreddit} subreddit to the subreddit options\nCurrent subreddit options: {SUBBREDDIT_OPTIONS}",
-            colour=Colours.grass_green
+            colour=Colours.grass_green,
         )
         await ctx.send(embed=embed)
-
 
     @_reddit.command()
     @is_owner()
@@ -111,7 +118,7 @@ class RedditCog(commands.Cog, name="Reddit"):
 
         embed = discord.Embed(
             description=f"Removed {subreddit} subreddit from the subreddit options\nCurrent subreddit options: {SUBBREDDIT_OPTIONS}",
-            colour=Colours.grass_green
+            colour=Colours.grass_green,
         )
 
 
