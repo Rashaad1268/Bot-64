@@ -1,4 +1,4 @@
-import discord, logging,  typing as t
+import discord, logging, typing as t
 
 from discord.ext import commands, menus  # pip install discord-ext-menus
 
@@ -37,6 +37,7 @@ class CustomPaginator(menus.Menu):
         prefix: t.Optional[str] = "",
         suffix: t.Optional[str] = "",
         words_per_page=2000,
+        empty_footer: t.Optional[bool]=True
     ):
 
         super().__init__(
@@ -51,15 +52,16 @@ class CustomPaginator(menus.Menu):
         self.current_page = 0
         self.last_page = len(self.pages) - 1
         self.words_per_page = words_per_page
+        self.empty_footer = empty_footer
 
     def add_page(self, content: str):
         if isinstance(self.pages, list):
             if len(content) <= self.words_per_page:
                 self.pages.append(content)
-            
+
             else:
-                self.pages.append(content[self.words_per_page:])
-                self.pages.append(content[:self.words_per_page])
+                self.pages.append(content[self.words_per_page :])
+                self.pages.append(content[: self.words_per_page])
 
         else:
             raise TypeError(f"pages needs to be a list")
@@ -85,9 +87,9 @@ class CustomPaginator(menus.Menu):
         embed.description = self.prefix + self.pages[self.current_page] + self.suffix
 
         if self.footer_text:
-            embed.set_footer(
-                text=f"{self.footer_text} (Page {self.current_page + 1}/{len(self.pages)})"
-            )
+            embed.set_footer(text=f"{self.footer_text} (Page {self.current_page + 1}/{len(self.pages)})")
+        elif self.empty_footer:
+            pass
         else:
             embed.set_footer(text=f"Page {self.current_page + 1}/{len(self.pages)}")
 
