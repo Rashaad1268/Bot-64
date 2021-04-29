@@ -6,14 +6,14 @@ Thanks py-dis :)
 import discord, difflib, logging, datetime as dt
 from discord import utils
 from discord.ext import commands, tasks
-from discord.ext.commands import command, group
+from discord.ext.commands import command, group, Context
 
 from bot.main import Bot
 from bot.utils.checks import is_staff, is_admin, is_moderator
-from bot.utils.helpful import build_success_embed, build_error_embed
+from bot.utils.helpful import build_success_embed, build_error_embed, get_reply
 from bot.utils.converters import OffTopicName
 from bot.utils.paginator import CustomPaginator
-from bot.constants import RushGuild
+from bot.constants import RushGuild, Roles
 from bot.database import off_topic_db
 
 log = logging.getLogger(__name__)
@@ -36,12 +36,8 @@ class OffTopicChannels(commands.Cog):
         channel_1_name = await self.off_topic_names.random_name()
         channel_2_name = await self.off_topic_names.random_name()
 
-        channel_1 = self.bot.get_channel(
-            RushGuild.Channels.off_topic_channels()[0]
-        )
-        channel_2 = self.bot.get_channel(
-            RushGuild.Channels.off_topic_channels()[1]
-        )
+        channel_1 = self.bot.get_channel(RushGuild.Channels.off_topic_channels()[0])
+        channel_2 = self.bot.get_channel(RushGuild.Channels.off_topic_channels()[1])
 
         await channel_1.edit(name=f"ot1-{channel_1_name}")
         await channel_2.edit(name=f"ot2-{channel_2_name}")
@@ -81,12 +77,12 @@ class OffTopicChannels(commands.Cog):
 
         else:
             await self.off_topic_names.add_name(name, ctx.author)
-            embed = build_success_embed(f"Added `{name}` to off topic channel names")
+            embed = build_success_embed(f"Added `{name}` to OffTopicNames DataBase")
             await ctx.send(embed=embed)
 
     @_off_topic_names.command(name="delete", aliases=["del", "d"])
     @is_admin()
-    async def delete_off_topic_name(self, ctx, name: OffTopicName):
+    async def delete_off_topic_name(self, ctx, *, name: OffTopicName):
         """Deletes a given off topic name"""
         if name in await self.off_topic_names.all_names():
             await self.off_topic_names.delete_name(name)
@@ -97,23 +93,53 @@ class OffTopicChannels(commands.Cog):
         else:
             await ctx.send(
                 embed=build_error_embed(
-                    f"Channel name `{name}` is not in the Channel Names pool to delete"
+                    f"Channel name `{name}` is not in the OffTopicNames DataBase to delete"
                 )
             )
 
     @_off_topic_names.command(name="search", aliases=["s"])
     @is_moderator()
-    async def search_ot_names(self, ctx, query: OffTopicName):
+    async def search_ot_names(self, ctx, *, query: OffTopicName):
         """Searches thorugh all of the off topic names"""
         search_results = await self.off_topic_names.search(query)
 
         embed = discord.Embed(
-            title="Search results",
+            title=f"Search results for {query}",
             description="\n".join(search_results)
             or f"There are no search results for `{query}`",
             colour=COLOUR,
         )
         await ctx.send(embed=embed)
+
+    @_off_topic_names.command(name="edit", aliases=("e", "update", "change"))
+    async def change_ot_name(self, ctx: Context, *, name: OffTopicName):
+        channel_name = await self.bot.db.fetchrow(
+            "SELECT * FROM OffTopicNames WHERE Name = $1", name
+        )
+        if not channel_name:
+            await ctx.send(
+                embed=build_error_embed(
+                    f"Channel name `{name}` is not in the OffTopicNames DataBase to edit"
+                )
+            )
+            return
+
+        new_name = await get_reply(ctx, "What is the new off topic channel name?")
+        new_name = await OffTopicName().convert(ctx, new_name)
+        admin_role = ctx.guild.get_role(Roles.admin)
+
+        if channel_name["authorid"] == ctx.author.id or admin_role in ctx.author.roles:
+            await self.bot.db.execute("UPDATE OffTopicNames SET Name = $1 WHERE Name = $2", new_name, name)
+            await ctx.send(embed=build_success_embed(f"Updated `{name}` to `{new_name}`"))
+        
+        else:
+            await ctx.send(
+                embed=build_error_embed(
+                    "You do not have permissions to edit this name"
+                )
+            )
+            return
+
 
     @_off_topic_names.command(name="list", aliases=["l"])
     @is_moderator()
