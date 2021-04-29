@@ -10,8 +10,8 @@ class OffTopicNames:
         query = """
         CREATE TABLE IF NOT EXISTS OffTopicNames(
             Id SERIAL PRIMARY KEY,
-            Name VARCHAR(50),
-            AddedBy VARCHAR(30),
+            Name VARCHAR(50) UNIQUE,
+            AuthorId BIGINT,
             DateAdded TIMESTAMP
         );"""
 
@@ -20,14 +20,14 @@ class OffTopicNames:
     async def add_name(self, name, author: Member):
         time = dt.datetime.utcnow()
         query = (
-            "INSERT INTO OffTopicNames (Name, AddedBy, DateAdded) VALUES($1, $2, $3)"
+            "INSERT INTO OffTopicNames (Name, AuthorId, DateAdded) VALUES($1, $2, $3)"
         )
 
         try:
-            await self.bot.db.execute(query, name, str(author), time)
+            await self.bot.db.execute(query, name, author.id, time)
         except asyncpg.UndefinedTableError:
             await self.__create_table()
-            await self.bot.db.execute(query, name, str(author), time)
+            await self.bot.db.execute(query, name, author.id, time)
 
     async def delete_name(self, name):
         query = "DELETE FROM OffTopicNames WHERE Name = $1"
