@@ -19,7 +19,7 @@ class ErrorHandler(commands.Cog):
 
     async def handle_unhandled_exception(self, ctx: Context, error: Exception):
         exc = "".join(format_exception(error, error, error.__traceback__))
-        log.exception(exc)
+        print(exc)
         await ctx.send(
             "And Unhandled Exception Occured.\nPlease inform the Staff. about it"
         )
@@ -55,7 +55,7 @@ class ErrorHandler(commands.Cog):
         )
         embed.add_field(
             name="More info",
-            value=f"[Message](https://discord.com/channels/{ctx.guild.id}/{ctx.channel.id}/{ctx.message.id})",
+            value=f"[Message]({ctx.message.jump_url})",
             inline=False,
         )
 
