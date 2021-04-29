@@ -88,7 +88,7 @@ class CustomPaginator(menus.Menu):
 
         if self.footer_text:
             embed.set_footer(text=f"{self.footer_text} (Page {self.current_page + 1}/{len(self.pages)})")
-        elif self.empty_footer:
+        elif self.empty_footer and len(self.pages) == 1:
             pass
         else:
             embed.set_footer(text=f"Page {self.current_page + 1}/{len(self.pages)}")
