@@ -4,9 +4,9 @@ from discord.ext.commands import command
 
 from bot.main import Bot
 from bot.constants import Emojis
-from bot.utils.helpful import get_message
+from bot.utils.helpful import get_reply
 from bot.utils.checks import is_staff, is_moderator
-from bot.cogs._error_handeler import build_success_embed
+from bot.utils.helpful import build_success_embed
 
 class Poll(commands.Cog):
     def __init__(self, bot: Bot):
@@ -33,7 +33,7 @@ class Poll(commands.Cog):
         """Starts a poll"""
         msg_to_send = "What are the poll options to vote on?"
         target_channel = target_channel or ctx.channel
-        options = await get_message(ctx=ctx, content=msg_to_send)
+        options = await get_reply(ctx=ctx, content=msg_to_send)
 
         if not options:
             return
