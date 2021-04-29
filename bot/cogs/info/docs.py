@@ -9,12 +9,12 @@ from discord.ext import commands
 
 
 
-PAGES = {
+DOC = {
         "antispam": "https://dpy-anti-spam.readthedocs.io/en/latest",
         "discord.py": "https://discordpy.readthedocs.io/en/latest",
         "py": "https://docs.python.org/3",
         "asyncpg": "https://magicstack.github.io/asyncpg/current",
-        "django": "https://docs.djangoproject.com/en/3.2/_objects"
+        "django": "https://docs.djangoproject.com/en/3.2/"
 }
 
 
@@ -25,7 +25,7 @@ class SphinxObjectFileReader:
     # Inspired by Sphinx's InventoryFileReader
     BUFSIZE = 16 * 1024
 
-    def __init__(self, buffer: bytes):
+    def __init__(self, buffer):
         self.stream = io.BytesIO(buffer)
 
     def readline(self):
@@ -52,23 +52,12 @@ class SphinxObjectFileReader:
                 yield buf[:pos].decode("utf-8")
                 buf = buf[pos + 1 :]
                 pos = buf.find(b"\n")
-    
-    def __iter__(self):
-        buf = b''
-        for chunk in self.read_compressed_chunks():
-            buf += chunk
-            pos = buf.find(b'\n')
-            while pos != -1:
-                yield buf[:pos].decode()
-                buf = buf[pos + 1:]
-                pos = buf.find(b'\n')
 
 
-class Documentation(commands.Cog, name="Documentation"):
+class Docs(commands.Cog, name="Documentation"):
     def __init__(self, bot):
         self.bot = bot
-        self.page_types = PAGES
-        self.cache = {}
+        self.page_types = DOC
 
     def finder(self, text, collection, *, key=None, lazy=True):
         suggestions = []
@@ -145,7 +134,7 @@ class Documentation(commands.Cog, name="Documentation"):
     async def build_lookup_table(self, page_types):
         cache = {}
         for key, page in page_types.items():
-            async with self.bot.http_session.get(page + "/objects.inv") as resp:
+            async with self.bot.http_session.get(page) as resp:
                 if resp.status != 200:
                     raise RuntimeError(
                         "Cannot build rtfm lookup table, try again later."
@@ -154,21 +143,25 @@ class Documentation(commands.Cog, name="Documentation"):
                 stream = SphinxObjectFileReader(await resp.read())
                 cache[key] = self.parse_object_inv(stream, page)
 
-        self.cache = cache
+        self._rtfm_cache = cache
 
-    async def do_rtfm(self, ctx, obj):
+    async def send_doc(self, ctx, key, obj):
         page_types = self.page_types
+        key = key.lower()
+
+        if obj is None:
+            await ctx.send(page_types[key])
+            return
 
         if not hasattr(self, "_rtfm_cache"):
             await ctx.trigger_typing()
-            await self.build_rtfm_lookup_table(page_types)
+            await self.build_lookup_table(page_types)
 
-        cache = liste.items())
-        # print(cache)
+        cache = list(self._rtfm_cache[key].items())
 
-        self.matches = self.finder(obj, cache, key=lambda t: t[0], lazy=False)
+        self.matches = self.finder(obj, cache, key=lambda t: t[0], lazy=False)[:8]
 
-        e = discord.Embed(description=f"**Query:** `{obj}`\n\n", colour=0xCE2029, timestamp=ctx.message.created_at)
+        e = discord.Embed(description=f"**Query:** `{obj}`\n\n", colour=discord.Colour.blue(), timestamp=ctx.message.created_at)
         if len(self.matches) == 0:
             return await ctx.send("Could not find anything. Sorry.")
 
@@ -176,15 +169,15 @@ class Documentation(commands.Cog, name="Documentation"):
         e.set_footer(text=f"Requested by: {ctx.author.display_name}")
         await ctx.send(embed=e)
 
-    @commands.command(
-        name="docs",
-        aliases=["d", "doc"],
-    )
-    async def docs_command(self, ctx, *, query: str):
-        """Sends documentation for the given query"""
+    @commands.command(name="docs", aliases=["d", "doc", "documentation"])
+    async def docs_command(self, ctx, key: str = None, *, query: str = None):
+        """Sends documentation link for the given query"""
+        if not key or key.lower() not in self.page_types.keys():
+            query = key
+            key = "py"
 
-        await self.do_rtfm(ctx, query)
+        await self.send_doc(ctx, key, query)
 
 
 def setup(bot):
-    bot.add_cog(Documentation(bot))
+    bot.add_cog(Docs(bot))
