@@ -80,8 +80,8 @@ class Tags(commands.Cog):
         """Lists all of the tags"""
         pages = []
         tags_per_page = 10
-        all_tags = await self.bot.db.fetch("SELECT Name FROM Tags")
-        all_tags = [tag["name"] for tag in all_tags]
+        all_tags = await self.bot.db.fetch("SELECT Id, Name FROM Tags")
+        all_tags = [f"{tag['name']} (ID: {tag['id']})" for tag in all_tags]
 
         for i in range(0, len(all_tags), tags_per_page):
             next_tags = all_tags[i : i + tags_per_page]
@@ -93,7 +93,7 @@ class Tags(commands.Cog):
                 tags_entry += foratted
             pages.append(tags_entry)
 
-        embed = discord.Embed(title="All tags")
+        embed = discord.Embed(title="All current tags", colour=Colours.python_blue)
         pag = paginator.CustomPaginator(
             pages, embed, "You can use !tag <tag_name> to view a tag"
         )
