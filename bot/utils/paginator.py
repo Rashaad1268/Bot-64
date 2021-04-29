@@ -73,9 +73,12 @@ class CustomPaginator(menus.Menu):
             else:
                 new_content = content.split()
                 for word in content:
-                    self.pages[self.last_page] += word
-                    if len(self.pages[self.last_page]) >= 2000:
+                    if len(self.pages[self.last_page]) >= self.words_per_page:
                         self.add_page(content)
+                        self.pages[self.last_page] += word
+                    else:
+                        self.pages[self.last_page] += word
+
         except IndexError:
             self.pages.append(content)
 
