@@ -43,7 +43,7 @@ class Tags(commands.Cog):
 
         else:
             try:
-                tag_content = await helpful.get_message(
+                tag_content = await helpful.get_reply(
                     ctx, "What will be the content of that tag?", timeout=300
                 )
             except asyncio.TimeoutError:
