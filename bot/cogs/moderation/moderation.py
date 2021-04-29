@@ -23,18 +23,18 @@ class Moderation(commands.Cog):
         """Sends the message to the given channel"""
         await channel.send(message)
 
-    @group(name="delete", aliases=["del"], invoke_without_command=True)
+    @group(name="purge", aliases=["p"], invoke_without_command=True)
     @has_permissions(manage_messages=True)
-    async def _delete(self, ctx):
+    async def _purge(self, ctx):
         """The main delete command"""
         await ctx.send_help(ctx.command)
 
-    @_delete.command(name="search", aliases=["s"])
+    @_purge.command(name="search", aliases=["s"])
     @has_permissions(manage_messages=True)
     async def delete_messages_search(self, ctx, limit: int, *, text: str):
         """Deletes the given number of messages which has the given text"""
-        await ctx.message.delete()
         msgs_to_delete = []
+        msgs_to_delete.append(ctx.message)
         async for msg in ctx.channel.history(limit=limit):
             if msg.content.lower() in text.lower():
                 msgs_to_delete.append(msg)
@@ -42,7 +42,7 @@ class Moderation(commands.Cog):
         for i in range(0, len(msgs_to_delete), 100):
             await ctx.channel.delete_messages(msgs_to_delete[i : i + 100])
 
-    @_delete.command(name="messages", aliases=("m", "msg", "msgs"))
+    @_purge.command(name="messages", aliases=("m", "msg", "msgs"))
     @has_permissions(manage_messages=True)
     async def delete_channel_messages(
         self, ctx, limit: int, channel: t.Optional[discord.TextChannel] = None
@@ -51,7 +51,7 @@ class Moderation(commands.Cog):
         channel = channel or ctx.channel
         await channel.purge(limit=limit + 1)
 
-    @_delete.command(name="all", aliases=("a",))
+    @_purge.command(name="all", aliases=("a",))
     @has_permissions(administrator=True)
     async def delete_messages_in_all_channels(
         self, ctx, limit: int, author: t.Optional[discord.Member]=None
