@@ -129,17 +129,18 @@ class OffTopicChannels(commands.Cog):
         admin_role = ctx.guild.get_role(Roles.admin)
 
         if channel_name["authorid"] == ctx.author.id or admin_role in ctx.author.roles:
-            await self.bot.db.execute("UPDATE OffTopicNames SET Name = $1 WHERE Name = $2", new_name, name)
-            await ctx.send(embed=build_success_embed(f"Updated `{name}` to `{new_name}`"))
-        
+            await self.bot.db.execute(
+                "UPDATE OffTopicNames SET Name = $1 WHERE Name = $2", new_name, name
+            )
+            await ctx.send(
+                embed=build_success_embed(f"Updated `{name}` to `{new_name}`")
+            )
+
         else:
             await ctx.send(
-                embed=build_error_embed(
-                    "You do not have permissions to edit this name"
-                )
+                embed=build_error_embed("You do not have permissions to edit this name")
             )
             return
-
 
     @_off_topic_names.command(name="list", aliases=["l"])
     @is_moderator()
@@ -153,13 +154,12 @@ class OffTopicChannels(commands.Cog):
 
         for i in range(0, len(all_names), self.results_per_page):
             next_names = all_names[i : i + self.results_per_page]
-            names_entry = "```\n"
+            names_entry = ""
 
             names_entry += "\n".join(next_names)
-            names_entry += "```"
             pages.append(f"{names_entry}")
 
-        pag = CustomPaginator(pages, embed)
+        pag = CustomPaginator(pages, embed, prefix="```", suffix="```")
         await pag.paginate(ctx)
 
 
