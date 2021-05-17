@@ -82,6 +82,7 @@ class Mute(commands.Cog):
         expiry = kwargs.get("expiry", None)
         reason = kwargs.get("reason", None)
         send_dm = kwargs.get("send_dm", True)
+        infraction_type = kwargs.get("infraction_type", "temporary mute" if expiry else "mute")
 
         infraction = await self.bot.db.mutes.get_infraction(target)
         if ctx.command == self.mute_member and infraction:
@@ -94,11 +95,10 @@ class Mute(commands.Cog):
             return
 
         await target.add_roles(discord.Object(id=Roles.muted), reason=reason)
-        inf_type = "temporary mute" if expiry else "muted"
         dm_inf_type = "temporarily muted" if expiry else "muted"
         mute_id = await self.bot.db.mutes.add_member(target, expiry)
         success_embed = build_success_embed(
-            f"Applied {inf_type} to {target.mention}\nReason: {reason}\n"
+            f"Applied {infraction_type} to {target.mention}\nReason: {reason}\n"
             f"Expiry: {expiry.strftime('%d/%m/%Y %H:%M:%S') or 'Permanent'} ({human_timedelta(expiry)})"
         )
         success_embed.set_footer(text=f"Infraction Id: {mute_id}")
@@ -140,7 +140,7 @@ class Mute(commands.Cog):
     @command(name="shadow-unmute", aliases=["shadow-umute"])
     @guild_only()
     @is_staff()
-    async def unmute_command(self, ctx: Context, member: Member):
+    async def shadow_unmute_command(self, ctx: Context, member: Member):
         await self.unmute_user(ctx, member, send_dm=False)
 
     @command(name="shadow-mute")
@@ -163,7 +163,7 @@ class Mute(commands.Cog):
         reason: t.Optional[str] = None,
     ):
         await self.perform_mute(
-            ctx, target, expiry=expiry, reason=reason, send_dm=False
+            ctx, target, expiry=expiry.dt, reason=reason, send_dm=False
         )
 
 
