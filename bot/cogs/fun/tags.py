@@ -78,20 +78,10 @@ class Tags(commands.Cog):
     @tags_command.command(name="list", aliases=("l",))
     async def list_all_tags(self, ctx):
         """Lists all of the tags"""
-        pages = []
         tags_per_page = 10
         all_tags = await self.bot.db.fetch("SELECT Id, Name FROM Tags")
-        all_tags = [f"{tag['name']} (ID: {tag['id']})" for tag in all_tags]
-
-        for i in range(0, len(all_tags), tags_per_page):
-            next_tags = all_tags[i : i + tags_per_page]
-            tags_entry = ""
-
-            for _tag in next_tags:
-                foratted = f"**»** {_tag}\n"
-
-                tags_entry += foratted
-            pages.append(tags_entry)
+        pages = [f"{_tag['name']} (ID: {_tag['id']})" for _tag in all_tags]
+        await ctx.send(pages)
 
         embed = discord.Embed(title="All current tags", colour=Colours.python_blue)
         pag = paginator.CustomPaginator(
@@ -113,7 +103,7 @@ class Tags(commands.Cog):
         )
         await ctx.send(embed=embed)
 
-    @tags_command.command(name="text", aliases=("t",))
+    @tags_command.command(name="raw", aliases=("text",))
     async def send_tag_text(self, ctx, *, tag_name: str):
         """Sends a tag with the given name in plain text"""
         tag = await self.tags.get_tag(tag_name)
