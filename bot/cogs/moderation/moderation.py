@@ -23,7 +23,7 @@ class Moderation(commands.Cog):
         """Sends the message to the given channel"""
         await channel.send(message)
 
-    @group(name="purge", aliases=["p"], invoke_without_command=True)
+    @group(name="purge", invoke_without_command=True)
     @has_permissions(manage_messages=True)
     async def _purge(self, ctx):
         """The main delete command"""
