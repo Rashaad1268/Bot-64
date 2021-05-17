@@ -3,7 +3,7 @@ import typing as t
 from discord.ext import commands
 from discord.ext.commands import check, has_any_role, Context, CheckFailure
 
-from bot.constants import MODERATION_ROLES, STAFF_ROLES, Roles, RushGuild, DeleteMessage
+from bot.constants import MODERATION_ROLES, STAFF_ROLES, Roles, RushGuild, Limits
 
 
 log = logging.getLogger(__name__)
@@ -41,9 +41,9 @@ def in_valid_channels():
                     log.debug(f"{ctx.author} is a staff member but isn't using this command in a valid_channel check failed")
                     await ctx.send(
                         f"Please use <#{RushGuild.Channels.staff_bot_commands}> for this command",
-                        delete_after=DeleteMessage.bot_msg_delete_delay,
+                        delete_after=Limits.msg_delete_delay,
                     )
-                    await ctx.message.delete(delay=DeleteMessage.user_msg_delete_delay)
+                    await ctx.message.delete(delay=Limits.msg_delete_delay)
                 except discord.NotFound:
                     log.info(
                         f"discord.NotFound error raised while trying to delete messages which failed the in_valid_channel check, ignoring the error"
@@ -61,8 +61,8 @@ def in_valid_channels():
                 log.debug(f"{ctx.author} is not staff and also not using the command in a valid channel, check failed")
                 await ctx.send(
                     f"Please use <#{RushGuild.Channels.public_bot_commands}> for this command",
-                    delete_after=DeleteMessage.user_msg_delete_delay)
-                await ctx.message.delete(delay=DeleteMessage.user_msg_delete_delay)
+                    delete_after=Limits.msg_delete_delay)
+                await ctx.message.delete(delay=Limits.msg_delete_delay)
             except discord.NotFound:
                 log.info(f"discord.NotFound error raised while trying to delete messages which failed the in_valid_channel check, ignoring the error")
                 pass
