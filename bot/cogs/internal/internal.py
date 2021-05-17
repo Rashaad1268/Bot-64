@@ -85,7 +85,7 @@ class Internal(commands.Cog):
     @is_staff()
     async def uptime(self, ctx: Context):
         """Shows how long the bot has been running"""
-        "Inspired by https://github.com/python-discord/sir-lancebot/blob/main/bot/exts/evergreen/uptime.py#L18-L28"
+        "Inspired by https://github.com/python-discord/sir-lancebot/blob/main/bot/exts/evergreen/uptime.py"
         uptime_string = self.bot.utc_start_time.humanize()
         await ctx.send(f"I started up {uptime_string}.")
 
