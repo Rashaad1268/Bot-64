@@ -32,6 +32,7 @@ class OffTopicChannels(commands.Cog):
     @tasks.loop(minutes=5)
     async def update_channel_names(self):
         """Updates the offtopic channel names to a random one from the pool"""
+        await self.bot.wait_until_guild_available()
         log.debug("Changing ot channel names")
         channel_1_name = await self.off_topic_names.random_name()
         channel_2_name = await self.off_topic_names.random_name()
@@ -102,14 +103,14 @@ class OffTopicChannels(commands.Cog):
     async def search_ot_names(self, ctx, *, query: OffTopicName):
         """Searches thorugh all of the off topic names"""
         search_results = await self.off_topic_names.search(query)
+        if not search_results:
+            await ctx.send(embed=build_error_embed(f"There are no search results for `{query}`"))
 
         embed = discord.Embed(
             title=f"Search results for {query}",
-            description="\n".join(search_results)
-            or f"There are no search results for `{query}`",
             colour=COLOUR,
         )
-        await ctx.send(embed=embed)
+        await CustomPaginator(search_results, embed, items_per_page=4, prefix="```", suffix="```").paginate(ctx)
 
     @_off_topic_names.command(name="edit", aliases=("e", "update", "change"))
     async def change_ot_name(self, ctx: Context, *, name: OffTopicName):
