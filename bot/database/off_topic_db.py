@@ -39,6 +39,8 @@ class OffTopicNames:
             await self.bot.db.execute(query, name)
 
     async def search(self, name: str):
+        name = name.lower()
+        name = name.strip()
         query = (
             "SELECT Name FROM OffTopicNames WHERE LOWER(Name) LIKE '%' || $1 || '%';"
         )
