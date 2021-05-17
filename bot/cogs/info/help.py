@@ -13,17 +13,17 @@ class NewHelp(commands.HelpCommand):
                 {'**You can also use: `'+'`, `'.join(command.aliases)+f'`**{nl}' if command.aliases and show_help else ""}""".strip()
 
     async def send_bot_help(self, mapping):
-        nl = "\n"
         pages = []
         embed = discord.Embed(title="Help", colour=discord.Colour.blurple())
         for cog, commands in mapping.items():
             filtered = await self.filter_commands(commands, sort=True)
             command_signatures = [self.get_command_signature(c, False) for c in filtered]
             cog_name = getattr(cog, "qualified_name", "No Category")
-            pages.append(
-                f"**{cog_name}**{nl}{f'{nl}'.join(command_signatures)}" + "\n"
-            )
-        pag = CustomPaginator(pages=pages, initial_embed=embed, words_per_page=725)
+            pages.append(f"**{cog_name}**")
+            for cmd_sig in command_signatures:
+                pages.append(cmd_sig)
+            pages[-1] += "\n"
+        pag = CustomPaginator(pages=pages, initial_embed=embed, items_per_page=6)
 
         await pag.paginate(self.context)
 
@@ -35,17 +35,17 @@ class NewHelp(commands.HelpCommand):
         await pag.paginate(self.context)
 
     async def send_cog_help(self, cog):
-        cog_commands = [
-            c for c in await self.filter_commands(cog.walk_commands(), sort=True)
-        ]
-        pages = [f"**Category {cog.qualified_name}**\n"]
+        filtered = await self.filter_commands(cog.get_commands(), sort=True)
+        cog_commands = [self.get_command_signature(c, False) for c in filtered]
+
+        pages = [f"**Category {cog.qualified_name}**"]
         embed = discord.Embed(title=f"Help", colour=discord.Colour.blurple())
-        pag = CustomPaginator(pages, embed)
 
         for command in cog_commands:
-            pag.add_line(f"```{self.clean_prefix}{command.name} {command.signature}```*{command.help}*\n")
+            pages.append(command )
 
 
+        pag = CustomPaginator(pages, embed, items_per_page=6)
         await pag.paginate(self.context)
 
     async def send_group_help(self, group):
@@ -53,11 +53,11 @@ class NewHelp(commands.HelpCommand):
         embed = discord.Embed(title=f"Help", colour=discord.Colour.blurple())
         pages = [f"**Group {group.qualified_name}**\n\n{self.get_command_signature(group)}\n\n**Sub commands**\n\n"]
 
-        pag =  CustomPaginator(pages, embed)
 
         for command in sub_commands:
-            pag.add_line(f"`{self.clean_prefix}{command.qualified_name}`\n*{command.help}*\n")
+            pages.append(f"`{self.clean_prefix}{command.qualified_name}`\n*{command.help}*\n")
 
+        pag =  CustomPaginator(pages, embed, items_per_page=6)
         await pag.paginate(self.context)
 
 
