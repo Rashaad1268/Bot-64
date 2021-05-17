@@ -36,51 +36,78 @@ class CustomPaginator(menus.Menu):
         timeout: t.Optional[int] = 300.0,
         prefix: t.Optional[str] = "",
         suffix: t.Optional[str] = "",
-        words_per_page=2000,
-        empty_footer: t.Optional[bool]=True
+        items_per_page: t.Optional[int] = 8,
+        letters_per_page: t.Optional[int]=1998,
+        empty_footer: t.Optional[bool] = True,
     ):
 
         super().__init__(
             timeout=timeout, delete_message_after=False, clear_reactions_after=True
         )
 
-        self.pages = pages
-        self.initial_embed = initial_embed
-        self.footer_text = footer_text
-        self.prefix = prefix
-        self.suffix = suffix
-        self.current_page = 0
-        self.last_page = len(self.pages) - 1
-        self.words_per_page = words_per_page
-        self.empty_footer = empty_footer
+        self.pages : t.List[str]= pages
+        self.initial_embed: discord.Embed = initial_embed
+        self.footer_text: str = footer_text
+        self.prefix: str = prefix
+        self.suffix: str = suffix
+        self.current_page: int = 0
+        self.last_page: int = len(self.pages) - 1
+        self.letters_per_page: int = letters_per_page
+        self.items_per_page: int = items_per_page
+        self.empty_footer: bool = empty_footer
+
+        if not isinstance(self.pages, list):
+            raise TypeError("pages need to be list")
+        if not isinstance(self.items_per_page, int):
+            raise TypeError("items_per_page need to be int")
+        if not isinstance(self.letters_per_page, int):
+            raise TypeError("letters_per_page need to be int")
 
     def add_page(self, content: str):
-        if isinstance(self.pages, list):
-            if len(content) <= self.words_per_page:
-                self.pages.append(content)
+        letters_per_page = self.letters_per_page
 
-            else:
-                self.pages.append(content[self.words_per_page :])
-                self.pages.append(content[: self.words_per_page])
+        for i in range(0, len(content), letters_per_page):
+            self.pages.append(content[i:i+letters_per_page])
 
-        else:
-            raise TypeError(f"pages needs to be a list")
+
+    def format_pages(self, pages: t.List[str]):
+        for i in range(0, len(pages), self.items_per_page):
+            next_pages = pages[i : i + self.items_per_page]
+            page_entry = ""
+
+            for some_page in next_pages:
+                page_entry += some_page + "\n"
+
+            for x in [
+                page_entry[i : i + self.letters_per_page]
+                for i in range(0, len(page_entry), self.letters_per_page)
+            ]:
+                self.add_page(x)
 
     def add_line(self, content: str):
         try:
-            if len(self.pages[self.last_page]) >= self.words_per_page:
+            if len(self.pages[self.last_page]) >= self.letters_per_page:
                 self.add_page(content)
             else:
-                new_content = content.split()
-                for word in content:
-                    if len(self.pages[self.last_page]) >= self.words_per_page:
-                        self.add_page(content)
-                        self.pages[self.last_page] += word
-                    else:
-                        self.pages[self.last_page] += word
+                if (
+                    len(self.pages[self.last_page]) + len(content)
+                    >= self.letters_per_page
+                ):
+                    self.add_page(
+                        content[: len(self.pages[self.last_page]) - len(content)]
+                        + "..."
+                    )
+                    self.add_line(
+                        "..."
+                        + content[len(self.pages[self.last_page]) - len(content) :]
+                    )
+                else:
+                    self.pages[self.last_page] += content
 
         except IndexError:
-            self.pages.append(content)
+            if len(content) >= self.letters_per_page:
+                self.add_page(content[: self.letters_per_page] + "...")
+                self.add_line("..."+content[self.letters_per_page - len(content) :])
 
     async def send_initial_message(
         self, ctx: commands.Context, channel: discord.TextChannel
@@ -90,7 +117,9 @@ class CustomPaginator(menus.Menu):
         embed.description = self.prefix + self.pages[self.current_page] + self.suffix
 
         if self.footer_text:
-            embed.set_footer(text=f"{self.footer_text} (Page {self.current_page + 1}/{len(self.pages)})")
+            embed.set_footer(
+                text=f"{self.footer_text} (Page {self.current_page + 1}/{len(self.pages)})"
+            )
         elif self.empty_footer and len(self.pages) == 1:
             pass
         else:
@@ -189,21 +218,19 @@ class CustomPaginator(menus.Menu):
             await self.message.edit(embed=embed)
 
     async def paginate(self, ctx: commands.Context):
-        all_pages = self.pages
-        self.pages = []
-
-        for page in all_pages:
-            self.add_line(page)
-
         if self.pages == []:
             raise EmptyPaginatorError("There are no pages supplied to paginate")
 
-        await super().start(ctx)
+        else:
+            all_pages = self.pages
+            self.pages = []
+            self.format_pages(all_pages)
+            await super().start(ctx)
 
-        if len(self.pages) <= 1:
-            self.stop()
+            if len(self.pages) <= 1:
+                self.stop()
 
     async def start(self, ctx):
         raise NotImplementedError(
-            f"Use CustomPaginator.paginate instead of CustomPaginator.start"
+            f"Use CustomPaginator.paginate() instead of CustomPaginator.start()"
         )
