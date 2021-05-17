@@ -23,9 +23,7 @@ class ErrorHandler(commands.Cog):
         await ctx.send(
             "And Unhandled Exception Occured.\nPlease inform the Staff. about it"
         )
-        webhook = discord.Webhook.from_url(
-            Webhooks.dev_log, adapter=discord.AsyncWebhookAdapter(self.bot.http_session)
-        )
+        webhook = await self.bot.fetch_webhook(Webhooks.dev_log)
 
         embed = discord.Embed(
             title="Unhandled Exception",
@@ -59,7 +57,10 @@ class ErrorHandler(commands.Cog):
             inline=False,
         )
 
-        await webhook.send(embed=embed)
+        try:
+            await webhook.send(embed=embed)
+        except discord.HTTPException:
+            await webhook.send(f"Error occured for {self.bot.user.mention}\n"+exc[:2000]+"...")
 
     @commands.Cog.listener()
     async def on_command_error(self, ctx: Context, error: Exception):
