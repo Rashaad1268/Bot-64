@@ -32,12 +32,15 @@ class FunCommands(Cog):
 
     @command(name="paginator", aliases=["pag"])
     @is_staff()
-    async def _paginate(self, ctx, *args):
-        await CustomPaginator(pages=[*args]).paginate(ctx)
+    async def paginate_command(self, ctx, items_per_page: int,*args):
+        if args:
+            await CustomPaginator(pages=[*args]).paginate(ctx)
+        else:
+            return await ctx.send("No pages supplied to paginate")
 
     @command(name="weather")
     @in_valid_channels()
-    @cooldown(5, 120, commands.BucketType.user)
+    @cooldown(3, 120, commands.BucketType.user)
     async def show_weather(self, ctx, *, location: str):
         querystring = {"q": location, "lang": "en", "mode": "json"}
         headers = {
@@ -110,8 +113,6 @@ Wind deg: {wind['deg']}"""
             plt.savefig(buffer, format="png")
             buffer.seek(0)
             plot_file = discord.File(buffer, filename="chart_plot.png")
-            # embed.set_thumbnail()
-            # await ctx.send(embed=embed)
             await ctx.send(f"{ctx.author.mention} Here is your plot", file=plot_file)
 
     @plot_command.command(name="pie")
