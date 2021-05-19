@@ -193,7 +193,7 @@ class Docs(commands.Cog, name="Documentation"):
     @command(name="source", aliases=["src"])
     async def source_command(self, ctx: Context):
         embed = discord.Embed(title="Bot's GitHub Repository")
-        embed.set_thumbnail(url=BotConfig.github_avatar_url)
+        embed.set_thumbnail(url="https://avatars1.githubusercontent.com/u/9919")
         embed.add_field(name="Repository", value=f"[Go To GitHub]({BotConfig.github})")
 
         await ctx.send(embed=embed)
