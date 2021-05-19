@@ -23,7 +23,7 @@ class NewHelp(commands.HelpCommand):
             for cmd_sig in command_signatures:
                 pages.append(cmd_sig)
             pages[-1] += "\n"
-        pag = CustomPaginator(pages=pages, initial_embed=embed, items_per_page=6)
+        pag = CustomPaginator(pages=pages, initial_embed=embed, items_per_page=7)
 
         await pag.paginate(self.context)
 
@@ -43,7 +43,6 @@ class NewHelp(commands.HelpCommand):
 
         for command in cog_commands:
             pages.append(command )
-
 
         pag = CustomPaginator(pages, embed, items_per_page=6)
         await pag.paginate(self.context)
