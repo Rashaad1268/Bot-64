@@ -2,9 +2,13 @@ import discord
 from discord.ext import commands
 from discord.ext.commands import command, is_owner
 import io
-from gtts import gTTS
+from gtts import gTTS # pip install gTTS
 
-"""This extension won't be loaded"""
+"""
+This extension won't be loaded
+Because the gtts module is blocking
+and discord.py doesn't support playing BytesIO objects in voice channels
+"""
 
 class VoiceCommands(commands.Cog):
     def __init__(self, bot):
