@@ -2,7 +2,6 @@ import datetime, typing, asyncpg, logging
 
 from discord import Member
 from traceback import format_exc
-from bot.constants import Postgress
 
 log = logging.getLogger(__name__)
 
