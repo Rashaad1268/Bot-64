@@ -3,7 +3,7 @@ Credit to https://github.com/python-discord/bot/blob/main/bot/exts/fun/off_topic
 Thanks py-dis :)
 """
 
-import discord, difflib, logging, datetime as dt
+import discord, difflib, logging, random, datetime as dt
 from discord import utils
 from discord.ext import commands, tasks
 from discord.ext.commands import command, group, Context
@@ -25,17 +25,20 @@ COLOUR = discord.Color.blurple()
 class OffTopicChannels(commands.Cog):
     def __init__(self, bot: Bot):
         self.bot = bot
-        self.off_topic_names = off_topic_db.OffTopicNames(self.bot)
+        self.off_topic_names = self.bot.db.offtopicnames
         self.results_per_page = 5
         self.update_channel_names.start()
 
-    @tasks.loop(minutes=5)
+    @tasks.loop(hours=1)
     async def update_channel_names(self):
         """Updates the offtopic channel names to a random one from the pool"""
-        await self.bot.wait_until_guild_available()
         log.debug("Changing ot channel names")
-        channel_1_name = await self.off_topic_names.random_name()
-        channel_2_name = await self.off_topic_names.random_name()
+        all_names = await self.off_topic_names.objects.all()
+        if not all_names.raw:
+            log.info("Cancelling name change due to the table being empty")
+            return
+        channel_1_name = random.choice(all_names.raw)
+        channel_2_name = random.choice(all_names.raw)
 
         channel_1 = self.bot.get_channel(RushGuild.Channels.off_topic_channels()[0])
         channel_2 = self.bot.get_channel(RushGuild.Channels.off_topic_channels()[1])
@@ -47,11 +50,11 @@ class OffTopicChannels(commands.Cog):
 
     @update_channel_names.before_loop
     async def before_channel_names_update(self):
-        await self.bot.wait_until_ready()
+        await self.bot.wait_until_guild_available()
 
     def cog_unload(self):
         self.update_channel_names.cancel()
-        log.debug("Canceled off topic channel update task")
+        log.debug("Canceled off topic channel name update task")
 
     @group(name="off-topic-names", aliases=["otn"], invoke_without_command=True)
     async def _off_topic_names(self, ctx):
