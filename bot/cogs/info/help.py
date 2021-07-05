@@ -6,7 +6,7 @@ from bot.main import Bot
 from bot.utils.paginator import CustomPaginator
 
 
-class NewHelp(commands.HelpCommand):
+class CustomHelpCommand(commands.HelpCommand):
     def get_command_signature(self, command: commands.Command, show_help: bool=True):
         nl = "\n"
         return f"""```{self.clean_prefix}{command.qualified_name} {command.signature}```{'*'+command.help+'*' if command.help else 'This command does not have a description'}
@@ -50,15 +50,15 @@ class NewHelp(commands.HelpCommand):
     async def send_group_help(self, group):
         sub_commands = [c for c in await self.filter_commands(group.walk_commands(), sort=True)]
         embed = discord.Embed(title=f"Help", colour=discord.Colour.blurple())
-        pages = [f"**Group {group.qualified_name}**\n\n{self.get_command_signature(group)}\n\n**Sub commands**\n\n"]
+        pages = [f"**Group {group.qualified_name}**\n{self.get_command_signature(group)}\n\n**Sub commands**"]
 
 
         for command in sub_commands:
-            pages.append(f"`{self.clean_prefix}{command.qualified_name}`\n*{command.help}*\n")
+            pages.append(f"`{self.clean_prefix}{command.qualified_name}`\n*{command.help}*")
 
         pag =  CustomPaginator(pages, embed, items_per_page=6)
         await pag.paginate(self.context)
 
 
 def setup(bot: Bot):
-    bot.help_command = NewHelp()
+    bot.help_command = CustomHelpCommand()
