@@ -7,7 +7,6 @@ from discord.ext.commands import command, Context, group, has_permissions
 from bot.main import Bot
 from bot.constants import RushGuild
 
-
 class Moderation(commands.Cog):
     def __init__(self, bot: Bot):
         self.bot = bot
@@ -67,26 +66,7 @@ class Moderation(commands.Cog):
                     await channel.purge(limit=limit)
 
 
-    @commands.Cog.listener()
-    async def on_message(self, message):
-        guild = self.bot.get_guild(RushGuild.id)
 
-        if message.author.id == self.bot.user.id:
-            return
-
-        if str(message.channel.type) == "private":
-            special_channel = discord.utils.get(guild.channels, name="admin-stuff")
-            if message.attachments:
-                for attachment in message.attachments:
-                    await special_channel.send(
-                        f"{message.author.mention} sent attachment(s)"
-                    )
-                    await special_channel.send(attachment.url)
-            else:
-                await special_channel.send(
-                    f"""{message.author.mention} sent this in a DM:\n{message.content}"""
-                )
-            return
 
 
 def setup(bot: Bot):
