@@ -7,7 +7,7 @@ from discord.ext.commands import Context, command, Cog, cooldown, group
 from bot.main import Bot
 from bot.utils.paginator import CustomPaginator
 from bot.utils.checks import is_staff, in_valid_channels
-from bot.constants import Colours, WeatherApi
+from bot.constants import Colours, WeatherApi, RushGuild
 
 
 class FunCommands(Cog):
@@ -32,9 +32,9 @@ class FunCommands(Cog):
 
     @command(name="paginator", aliases=["pag"])
     @is_staff()
-    async def paginate_command(self, ctx, items_per_page: int,*args):
+    async def paginate_command(self, ctx, items_per_page: int, *args):
         if args:
-            await CustomPaginator(pages=[*args]).paginate(ctx)
+            await CustomPaginator(pages=list(args)).paginate(ctx)
         else:
             return await ctx.send("No pages supplied to paginate")
 
