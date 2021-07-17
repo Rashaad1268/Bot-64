@@ -25,15 +25,19 @@ COLOUR = discord.Color.blurple()
 class OffTopicChannels(commands.Cog):
     def __init__(self, bot: Bot):
         self.bot = bot
-        self.off_topic_names = self.bot.db.offtopicnames
+        self.names = self.bot.db.offtopicnames
+        self.db = self.bot.db
         self.results_per_page = 5
         self.update_channel_names.start()
+
+    def from_qs(self, qs):
+        return list(map(str, qs))
 
     @tasks.loop(hours=1)
     async def update_channel_names(self):
         """Updates the offtopic channel names to a random one from the pool"""
         log.debug("Changing ot channel names")
-        all_names = await self.off_topic_names.objects.all()
+        all_names = await self.names.objects.all()
         if not all_names.raw:
             log.info("Cancelling name change due to the table being empty")
             return
@@ -64,7 +68,7 @@ class OffTopicChannels(commands.Cog):
     @_off_topic_names.command(name="add", aliases=["a"])
     async def add_off_topic_channel_name(self, ctx, *, name: OffTopicName):
         """Adds a channel name to the pool"""
-        existing_names = await self.off_topic_names.all_names()
+        existing_names = self.from_qs(await self.names.objects.all())
 
         if close_match := difflib.get_close_matches(
             name, existing_names, n=1, cutoff=0.8
@@ -80,7 +84,7 @@ class OffTopicChannels(commands.Cog):
             await ctx.send(embed=err_em)
 
         else:
-            await self.off_topic_names.add_name(name, ctx.author)
+            await self.names(name=name, author=ctx.author.id, date_added=dt.datetime.utcnow()).save()
             embed = build_success_embed(f"Added `{name}` to OffTopicNames DataBase")
             await ctx.send(embed=embed)
 
@@ -88,7 +92,7 @@ class OffTopicChannels(commands.Cog):
     @is_admin()
     async def delete_off_topic_name(self, ctx, *, name: OffTopicName):
         """Deletes a given off topic name"""
-        if name in await self.off_topic_names.all_names():
+        if name in await self.names.objects.all():
             await self.off_topic_names.delete_name(name)
             await ctx.send(
                 embed=build_success_embed(f"Deleted `{name}` from OffTopicNames pool")
@@ -103,9 +107,9 @@ class OffTopicChannels(commands.Cog):
 
     @_off_topic_names.command(name="search", aliases=["s"])
     @is_moderator()
-    async def search_ot_names(self, ctx, *, query: OffTopicName):
+    async def search_ot_names(self, ctx, *, query):
         """Searches thorugh all of the off topic names"""
-        search_results = await self.off_topic_names.search(query)
+        search_results = self.from_qs(await self.names.objects.search(name=query))
         if not search_results:
             await ctx.send(embed=build_error_embed(f"There are no search results for `{query}`"))
 
@@ -117,10 +121,8 @@ class OffTopicChannels(commands.Cog):
 
     @_off_topic_names.command(name="edit", aliases=("e", "update", "change"))
     async def change_ot_name(self, ctx: Context, *, name: OffTopicName):
-        channel_name = await self.bot.db.fetchrow(
-            "SELECT * FROM OffTopicNames WHERE Name = $1", name
-        )
-        if not channel_name:
+        old_name = await self.names.objects.get(name=name)
+        if not old_name:
             await ctx.send(
                 embed=build_error_embed(
                     f"Channel name `{name}` is not in the OffTopicNames DataBase to edit"
@@ -132,10 +134,9 @@ class OffTopicChannels(commands.Cog):
         new_name = await OffTopicName().convert(ctx, new_name)
         admin_role = ctx.guild.get_role(Roles.admin)
 
-        if channel_name["authorid"] == ctx.author.id or admin_role in ctx.author.roles:
-            await self.bot.db.execute(
-                "UPDATE OffTopicNames SET Name = $1 WHERE Name = $2", new_name, name
-            )
+        if old_name.author == ctx.author.id or admin_role in ctx.author.roles:
+            old_name.name = new_name
+            await old_name.update()
             await ctx.send(
                 embed=build_success_embed(f"Updated `{name}` to `{new_name}`")
             )
@@ -150,20 +151,12 @@ class OffTopicChannels(commands.Cog):
     @is_moderator()
     async def list_ot_names(self, ctx):
         """Lists all of the off topic names"""
-        all_names = await self.off_topic_names.all_names()
+        all_names = self.from_qs(await self.names.objects.all())
         embed = discord.Embed(
             title="Here are all of the off-topic names", colour=COLOUR
         )
-        pages = []
 
-        for i in range(0, len(all_names), self.results_per_page):
-            next_names = all_names[i : i + self.results_per_page]
-            names_entry = ""
-
-            names_entry += "\n".join(next_names)
-            pages.append(f"{names_entry}")
-
-        pag = CustomPaginator(pages, embed, prefix="```", suffix="```")
+        pag = CustomPaginator(all_names, embed, prefix="```", suffix="```")
         await pag.paginate(ctx)
 
 
