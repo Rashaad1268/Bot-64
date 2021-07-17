@@ -10,7 +10,7 @@ from bot.utils.checks import is_staff
 from bot.utils.helpful import build_error_embed, build_success_embed
 from bot.utils.time import FutureTime, human_timedelta
 
-POLL_PERIOD = 5  # <- minutes
+POLL_PERIOD = 25  # <- minutes
 
 
 log = logging.getLogger(__name__)
@@ -19,40 +19,46 @@ log = logging.getLogger(__name__)
 class Mute(commands.Cog):
     def __init__(self, bot: Bot):
         self.bot = bot
+        self.mutes = self.bot.db.mutes
+        self.members = self.bot.db.members
         self.unmute_mutes.start()
 
     @tasks.loop(minutes=POLL_PERIOD)
     async def unmute_mutes(self):
         log.debug("Unmuting muted members")
         now = dt.datetime.utcnow()
-        guild = await self.bot.fetch_guild(RushGuild.id)
+        guild = self.bot.get_guild(RushGuild.id)
         muted_role = guild.get_role(Roles.muted)
-        rows = await self.bot.db.mutes.everything()
+        all_mutes = await self.mutes.objects.all()
 
-        if rows:
-            for row in rows:
-                if row["expiry"]:
-                    if now >= row["expiry"]:
-                        target_member = guild.get_member(row["member_id"])
+        if all_mutes:
+            for mute in all_mutes:
+                if mute.expiry:
+                    if now >= mute.expiry:
+                        to_unmute = await self.members.objects.get(mute.member)
+                        target_member = guild.get_member(to_unmute.id)
 
                         if target_member and muted_role in target_member.roles:
                             log.debug(f"Unmuted {str(target_member)}")
                             await target_member.remove_roles(muted_role)
+                            await mute.delete()
 
-                            await self.bot.db.mutes.remove_member(target_member.id)
+                        elif target_member and muted_role not in target_member.roles:
+                            await mute.delete()
 
     @unmute_mutes.before_loop
     async def before_check_current_mutes(self):
-        await self.bot.wait_until_ready()
+        await self.bot.wait_until_guild_available()
 
     async def inform_member(
         self, ctx: Context, member: Member, oppoite=False, **kwargs
     ):
         infraction_type = kwargs.get("infraction_type", ctx.command.qualified_name)
         expiry = kwargs.get("expiry", None)
+        reason = kwargs.get("Reason", None)
         msg = f"You are being {infraction_type} from {ctx.guild.name}"
         if not oppoite:
-            msg += f"\nExpiry: {expiry.strftime('%d/%m/%Y %H:%M:%S') or 'Permanent'}{f' ({human_timedelta(expiry)})' if expiry else ''}\nReason: {kwargs.get('reason', None)}"
+            msg += f"\nExpiry: {expiry.strftime('%d/%m/%Y %H:%M:%S') if expiry else 'Permanent'}{f' ({human_timedelta(expiry)})' if expiry else ''}\nReason: {reason}"
 
         title = f"You are being {infraction_type}"
         embed = discord.Embed(
@@ -68,7 +74,8 @@ class Mute(commands.Cog):
         send_dm = kwargs.get("send_dm", True)
         muted_role = ctx.guild.get_role(Roles.muted)
         await member.remove_roles(muted_role)
-        await self.bot.db.mutes.remove_member(member)
+        infraction = await self.mutes.objects.get(member=member.id)
+        await infraction.delete()
 
         if send_dm:
             await self.inform_member(ctx, member, True, infraction_type="unmuted")
@@ -81,30 +88,46 @@ class Mute(commands.Cog):
     async def perform_mute(self, ctx: Context, target: discord.Member, **kwargs):
         expiry = kwargs.get("expiry", None)
         reason = kwargs.get("reason", None)
+        is_permanent = True if expiry else False
         send_dm = kwargs.get("send_dm", True)
-        infraction_type = kwargs.get("infraction_type", "temporary mute" if expiry else "mute")
+        infraction_type = kwargs.get(
+            "infraction_type", "temporary mute" if expiry else "mute"
+        )
 
-        infraction = await self.bot.db.mutes.get_infraction(target)
-        if ctx.command == self.mute_member and infraction:
+        target_in_db = await self.members.objects.get(target.id)
+        infraction = await self.mutes.objects.get(member=target_in_db.id)
+        if is_permanent and infraction is not None:
             await ctx.send(
                 embed=build_error_embed(
                     f"Member {target.mention} is already permanently muted\n"
-                    f"See mute infraction `#{infraction['id']}`"
+                    f"See mute infraction `#{infraction.id}`"
                 )
             )
             return
 
         await target.add_roles(discord.Object(id=Roles.muted), reason=reason)
-        dm_inf_type = "temporarily muted" if expiry else "muted"
-        mute_id = await self.bot.db.mutes.add_member(target, expiry)
+        target_in_db.total_infractions += 1
+        await target_in_db.update()
+        dm_inf_type = "temporarily muted" if is_permanent else "muted"
+        mute = await self.mutes.objects.create(
+            member=target_in_db.id,
+            expiry=expiry,
+            reason=reason,
+            given_at=dt.datetime.utcnow(),
+        )
+        formatted_expiry = (
+            expiry.strftime("%d/%m/%Y %H:%M:%S") if expiry else "Permanent"
+        )
         success_embed = build_success_embed(
             f"Applied {infraction_type} to {target.mention}\nReason: {reason}\n"
-            f"Expiry: {expiry.strftime('%d/%m/%Y %H:%M:%S') or 'Permanent'} ({human_timedelta(expiry)})"
+            f"Expiry: {formatted_expiry}{f' ({human_timedelta(expiry)})' if expiry else ''}"
         )
-        success_embed.set_footer(text=f"Infraction Id: {mute_id}")
-        
+        success_embed.set_footer(text=f"Infraction Id: {mute.id}")
+
         if send_dm:
-            await self.inform_member(ctx, target, expiry=expiry, reason=reason, infraction_type=dm_inf_type)
+            await self.inform_member(
+                ctx, target, expiry=expiry, reason=reason, infraction_type=dm_inf_type
+            )
         await ctx.send(embed=success_embed)
 
         if expiry:
@@ -136,7 +159,7 @@ class Mute(commands.Cog):
     @is_staff()
     async def unmute_command(self, ctx: Context, member: Member):
         await self.unmute_user(ctx, member)
-    
+
     @command(name="shadow-unmute", aliases=["shadow-umute"])
     @guild_only()
     @is_staff()
