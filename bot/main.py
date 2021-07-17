@@ -3,22 +3,20 @@ import discord, os, arrow, asyncio, aiohttp, logging
 from discord.ext import commands
 import nest_asyncio
 
-from .constants import (BotConfig, Postgress, RushGuild, Roles, Webhooks)
-from bot.database.database import DataBase
+from .constants import (BotConfig, RushGuild, Roles, Webhooks)
+from bot.models import DataBase
 
 log = logging.getLogger(__name__)
 
 
 class Bot(commands.Bot):
     def __init__(self, **kwargs):
-        activity = discord.Game(name=f"Commands {BotConfig.prefix}help")
-        super().__init__(**kwargs, activity=activity)
+        kwargs.setdefault("activity", discord.Game(name=f"Commands {BotConfig.prefix}help"))
+        super().__init__(**kwargs)
 
+        self.db = DataBase()
         self.http_session = aiohttp.ClientSession(loop=self.loop)
         self._guild_available  = asyncio.Event()
-        self.db = self.loop.run_until_complete(
-            DataBase.create(Postgress.uri, self, self.loop)
-        )
 
     @property
     def rush(self):
@@ -27,7 +25,7 @@ class Bot(commands.Bot):
     @classmethod
     def defaults(cls):
         allowed_mentions = discord.AllowedMentions(
-            everyone=False, users=True, roles=True, replied_user=True
+            everyone=False, users=True, roles=False, replied_user=True
         )
         return cls(
             command_prefix=commands.when_mentioned_or(BotConfig.prefix),
@@ -61,10 +59,10 @@ class Bot(commands.Bot):
 
     async def on_ready(self):
         print(f"We have logged in as {str(self.user)} ID: {self.user.id}")
+        self.utc_start_time = arrow.utcnow()
 
     async def on_connect(self):
         log.debug("Connected to the Discord API")
-        self.utc_start_time = arrow.utcnow()
     
     async def on_guild_available(self, guild: discord.Guild):
         """
