@@ -48,8 +48,8 @@ class CustomPaginator(menus.Menu):
         self.pages : t.List[str]= pages
         self.initial_embed: discord.Embed = initial_embed
         self.footer_text: str = footer_text
-        self.prefix: str = prefix
-        self.suffix: str = suffix
+        self.prefix: str = str(prefix) + "\n" if str(prefix) else str(prefix)
+        self.suffix: str = "\n" + str(suffix) if str(suffix) else str(suffix)
         self.current_page: int = 0
         self.last_page: int = len(self.pages) - 1
         self.letters_per_page: int = letters_per_page
