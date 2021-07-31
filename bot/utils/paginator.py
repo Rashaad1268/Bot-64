@@ -13,11 +13,6 @@ QUIT_PAGINATION = "\u23f9"
 RIGHT_PAGE = "\u27A1"
 LAST_PAGE = "\u23ED"
 
-"""
-WARNING
-The below code is very messy
-If you do not like ugly code please do not look at it"""
-
 
 class EmptyPaginatorError(Exception):
     """This is the exception which will be raised if the paginator pages list is empty"""
@@ -33,19 +28,22 @@ class CustomPaginator(menus.Menu):
         pages: t.List[str] = [],
         initial_embed: discord.Embed = discord.Embed(),  # Default is an empty embed
         footer_text: t.Optional[str] = None,
-        timeout: t.Optional[int] = 300.0,
         prefix: t.Optional[str] = "",
         suffix: t.Optional[str] = "",
         items_per_page: t.Optional[int] = 8,
-        letters_per_page: t.Optional[int]=1998,
+        delete_message_after: bool=False,
+        timeout: t.Optional[int] = 300.0,
+        letters_per_page: t.Optional[int] = 1998,
+        fail_silently: t.Optional[bool] = False,
         empty_footer: t.Optional[bool] = True,
     ):
 
         super().__init__(
-            timeout=timeout, delete_message_after=False, clear_reactions_after=True
+            timeout=timeout, delete_message_after=delete_message_after, clear_reactions_after=True
         )
 
-        self.pages : t.List[str]= pages
+        self.pages: t.List[str] = pages
+        self.fail_silently = fail_silently
         self.initial_embed: discord.Embed = initial_embed
         self.footer_text: str = footer_text
         self.prefix: str = str(prefix) + "\n" if str(prefix) else str(prefix)
@@ -67,8 +65,7 @@ class CustomPaginator(menus.Menu):
         letters_per_page = self.letters_per_page
 
         for i in range(0, len(content), letters_per_page):
-            self.pages.append(content[i:i+letters_per_page])
-
+            self.pages.append(content[i : i + letters_per_page])
 
     def format_pages(self, pages: t.List[str]):
         for i in range(0, len(pages), self.items_per_page):
@@ -107,7 +104,7 @@ class CustomPaginator(menus.Menu):
         except IndexError:
             if len(content) >= self.letters_per_page:
                 self.add_page(content[: self.letters_per_page] + "...")
-                self.add_line("..."+content[self.letters_per_page - len(content) :])
+                self.add_line("..." + content[self.letters_per_page - len(content) :])
 
     async def send_initial_message(
         self, ctx: commands.Context, channel: discord.TextChannel
